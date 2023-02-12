@@ -1,3 +1,4 @@
+#[derive(Clone, Copy)]
 pub enum Operator{
     Add, 
     Substract, 
@@ -15,13 +16,14 @@ impl Operator{
         }
     }
 }
+
+#[derive(Clone, Copy)]
 pub enum Token{
     Number(i64),
     Op(Operator)
 }
 
 pub struct Parser{
-    expression: str,
     tokens: Vec<Token>, 
     current_token: Option<Token>, 
     index: usize,
@@ -42,10 +44,11 @@ impl Parser{
                         current_number = String::new();
                     }
                     match c{
-                        '+' => tokens.push(Token::Add), 
-                        '-' => tokens.push(Token::Substract), 
-                        '*' => tokens.push(Token::Multiply), 
-                        '/' => tokens.push(Token::Divide),
+                        '+' => tokens.push(Token::Op(Operator::Add)), 
+                        '-' => tokens.push(Token::Op(Operator::Substract)), 
+                        '*' => tokens.push(Token::Op(Operator::Multiply)), 
+                        '/' => tokens.push(Token::Op(Operator::Divide)),
+                        _ => {}
                     }
                 }
             
@@ -58,8 +61,7 @@ impl Parser{
             tokens.push(Token::Number(current_number.parse().unwrap()));
         }
 
-        Parser {
-            expression, 
+        Parser { 
             tokens, 
             current_token: None, 
             index: 0,
@@ -68,7 +70,7 @@ impl Parser{
 
     pub fn compute(&mut self) -> i64{
         let postfixed_tokens = self.postfix(); 
-        let mut stack:i64= Vec::new();
+        let mut stack: Vec<i64> = Vec::new();
 
         let mut result: i64 = 0;
 
@@ -77,10 +79,10 @@ impl Parser{
                 Token::Number(n) => stack.push(n),
 
                 Token::Op(op) => {
-                    let right_number = stack.last();
+                    let right_number = *stack.last().unwrap_or(&0);
                     stack.pop();
 
-                    result = stack.last();
+                    result = *stack.last().unwrap_or(&0);
                     stack.pop();
 
                     match op{
@@ -94,29 +96,28 @@ impl Parser{
                 }
             }
         }
-        stack[0]
+        result
     }
     fn postfix(&mut self) -> Vec<Token>{
-        let mut tokens = self.tokens;
 
         let mut queue: Vec<Token> = Vec::new();
-        let mut stack: Vec<Token> = Vec::news();
+        let mut stack: Vec<Operator> = Vec::new();
 
-        for token in tokens{
+        for token in &self.tokens{
             match token{
-                Token::Number(_) => queue.push(token),
+                Token::Number(_) => queue.push(*token),
                 Token::Op(op) => {
                     if stack.is_empty(){
-                        stack.push(op)
+                        stack.push(*op);
                     }
                     else{
-                        let last_value = stack.last();
+                        let last_value = stack.last().unwrap_or(&Operator::Add);
                         match op.operator_precedence(){
-                           n if n > last_value.operator_precedance() => stack.push(op), 
-                           n if n <= last_value.operator_precedance() => {
-                                queue.push(last_value);
+                           n if n > last_value.operator_precedence() => stack.push(*op), 
+                           n if n <= last_value.operator_precedence() => {
+                                queue.push(Token::Op(*op));
                                 stack.pop();
-                                stack.push(op);
+                                stack.push(*op);
                            }
                            _ => {}
                         }
@@ -124,8 +125,8 @@ impl Parser{
                 }
             }
         }
-        for token in stack{
-            queue.push(token);
+        for op in stack{
+            queue.push(Token::Op(op));
         }
         queue
     }
