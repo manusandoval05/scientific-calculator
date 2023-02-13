@@ -1,4 +1,4 @@
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Operator{
     Add, 
     Substract, 
@@ -17,7 +17,7 @@ impl Operator{
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Token{
     Number(i64),
     Op(Operator)
@@ -25,8 +25,6 @@ pub enum Token{
 
 pub struct Parser{
     tokens: Vec<Token>, 
-    current_token: Option<Token>, 
-    index: usize,
 }
 
 impl Parser{
@@ -63,8 +61,6 @@ impl Parser{
 
         Parser { 
             tokens, 
-            current_token: None, 
-            index: 0,
         }
     }
 
@@ -104,6 +100,7 @@ impl Parser{
         let mut stack: Vec<Operator> = Vec::new();
 
         for token in &self.tokens{
+            
             match token{
                 Token::Number(_) => queue.push(*token),
                 Token::Op(op) => {
@@ -112,10 +109,11 @@ impl Parser{
                     }
                     else{
                         let last_value = stack.last().unwrap_or(&Operator::Add);
+
                         match op.operator_precedence(){
                            n if n > last_value.operator_precedence() => stack.push(*op), 
                            n if n <= last_value.operator_precedence() => {
-                                queue.push(Token::Op(*op));
+                                queue.push(Token::Op(*last_value));
                                 stack.pop();
                                 stack.push(*op);
                            }
@@ -125,8 +123,8 @@ impl Parser{
                 }
             }
         }
-        for op in stack{
-            queue.push(Token::Op(op));
+        for op in stack.iter().rev() {
+            queue.push(Token::Op(*op));
         }
         queue
     }

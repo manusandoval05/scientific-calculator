@@ -6,10 +6,9 @@ use std::io::{stdin, BufRead};
 
 fn main(){
     let mut lines = stdin().lock().lines();
-    
+     
     loop{
         let line = lines.next(); 
-        print!("> ");
 
         match line {
             Some(Ok(line)) => {
