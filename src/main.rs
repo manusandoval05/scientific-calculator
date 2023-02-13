@@ -2,7 +2,6 @@ mod calculator;
 
 use std::io::{stdin, stdout, Write, BufRead};
 
-
 fn main(){
     let mut lines = stdin().lock().lines();
      
