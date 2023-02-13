@@ -1,13 +1,16 @@
-
 mod calculator;
 
-use std::io::{stdin, BufRead};
+use std::io::{stdin, stdout, Write, BufRead};
 
 
 fn main(){
     let mut lines = stdin().lock().lines();
      
     loop{
+        print!("> "); 
+        
+        stdout().flush().unwrap();
+
         let line = lines.next(); 
 
         match line {
