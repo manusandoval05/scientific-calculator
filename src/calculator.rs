@@ -1,3 +1,4 @@
+
 #[derive(Clone, Copy, Debug)]
 pub enum Operator{
     Add, 
@@ -37,6 +38,8 @@ pub enum Token{
 
 pub struct Parser{
     tokens: Vec<Token>, 
+    expression: String, 
+    result: i128
 }
 
 impl Parser{
@@ -46,17 +49,34 @@ impl Parser{
 
         let mut current_number = String::new();
 
-        for c in expression.chars(){
-            match c{
+        // Every number without an explicit sign is positive
+        let mut sign_carry: char = '+';
 
-                '+' | '-' | '*' | '/' => {
+        for c in expression.chars(){
+    
+            match c{
+                '-' | '+' => {
+                    if current_number.is_empty(){
+                        sign_carry = compare_signs(sign_carry, c);
+                    }
+                    else{
+                        tokens.push(Token::Number(parse_number_with_sign(current_number, sign_carry)));
+                        current_number = String::new();
+                        
+                        match c{
+                            '-' => tokens.push(Token::Op(Operator::Substract)), 
+                            '+' => tokens.push(Token::Op(Operator::Add)), 
+                            _ => {}
+                        }
+                                                
+                    }
+                }
+                '*' | '/' => {
                     if !current_number.is_empty(){
-                        tokens.push(Token::Number(current_number.parse().unwrap()));
+                        tokens.push(Token::Number(parse_number_with_sign(current_number, sign_carry)));
                         current_number = String::new();
                     }
-                    match c{
-                        '+' => tokens.push(Token::Op(Operator::Add)), 
-                        '-' => tokens.push(Token::Op(Operator::Substract)), 
+                    match c{ 
                         '*' => tokens.push(Token::Op(Operator::Multiply)), 
                         '/' => tokens.push(Token::Op(Operator::Divide)),
                         _ => {}
@@ -64,14 +84,14 @@ impl Parser{
                 }
                 ' ' => {
                     if !current_number.is_empty(){
-                        tokens.push(Token::Number(current_number.parse().unwrap()));
+                        tokens.push(Token::Number(parse_number_with_sign(current_number, sign_carry)));
                         current_number = String::new();
                     }
                 }
 
                 '(' | ')' => {
                     if !current_number.is_empty(){
-                        tokens.push(Token::Number(current_number.parse().unwrap()));
+                        tokens.push(Token::Number(parse_number_with_sign(current_number, sign_carry)));
                         current_number = String::new();
                     }
 
@@ -95,6 +115,8 @@ impl Parser{
         println!("{:?}", tokens);
         Parser { 
             tokens, 
+            expression: String::from(expression), 
+            result: 0
         }
     }
 
@@ -130,6 +152,7 @@ impl Parser{
                 Token::Br(_) => {}
             }
         }
+        self.result = result;
         result
     }
     fn postfix(&mut self) -> Vec<&Token>{
@@ -184,4 +207,33 @@ impl Parser{
         println!("{:?}", queue); 
         queue
     }
+}
+
+fn compare_signs(left: char, right:char) -> char{
+    let mut sign: char = '+';
+    match left{
+        '+' => {
+            match right{
+                '+' => sign = '+', 
+                '-' => sign = '-',
+                _ => {}
+            }
+        },
+        '-' => {
+            match right{
+                '+' => sign = '-', 
+                '-' => sign = '+',
+                _ => {}
+            }
+        }, 
+        _ => {}
+    }
+    sign
+}
+
+fn parse_number_with_sign(mut number: String, sign: char) -> i128 {
+    // Useful for when you only have the unsigned representation of a number and wish to parse it signed
+    number.insert(0, sign);
+    
+    number.parse().unwrap()
 }
