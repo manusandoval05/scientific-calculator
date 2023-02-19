@@ -17,10 +17,22 @@ impl Operator{
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Bracket {
+    OpeningParenthesis, 
+    ClosingParenthesis,
+}
+
+impl Bracket{
+    fn operator_precedence(&self) -> u8 {
+        6
+    }
+}
 #[derive(Clone, Copy, Debug)]
 pub enum Token{
-    Number(i64),
-    Op(Operator)
+    Number(i128),
+    Br(Bracket),
+    Op(Operator),
 }
 
 pub struct Parser{
@@ -31,6 +43,7 @@ impl Parser{
     pub fn new(expression: &str) -> Parser{
 
         let mut tokens = Vec::new();
+
         let mut current_number = String::new();
 
         for c in expression.chars(){
@@ -49,6 +62,21 @@ impl Parser{
                         _ => {}
                     }
                 }
+
+                '(' | ')' => {
+                    if !current_number.is_empty(){
+                        tokens.push(Token::Number(current_number.parse().unwrap()));
+                        current_number = String::new();
+                    }
+
+                    match c {
+                        '(' =>  tokens.push(Token::Br(Bracket::OpeningParenthesis)), 
+                        ')' => tokens.push(Token::Br(Bracket::ClosingParenthesis)),
+
+                        _ => {}
+
+                    }
+                }
             
                 '0'..='9' => current_number.push(c), 
 
@@ -58,28 +86,27 @@ impl Parser{
         if !current_number.is_empty(){
             tokens.push(Token::Number(current_number.parse().unwrap()));
         }
-
+        println!("{:?}", tokens);
         Parser { 
             tokens, 
         }
     }
 
-    pub fn compute(&mut self) -> i64{
+    pub fn compute(&mut self) -> i128 {
         let postfixed_tokens = self.postfix(); 
-        let mut stack: Vec<i64> = Vec::new();
+        let mut stack: Vec<i128> = Vec::new();
 
-        let mut result: i64 = 0;
+        let mut result: i128 = 0;
 
         for token in postfixed_tokens{
             match token{
-                Token::Number(n) => stack.push(n),
+                Token::Number(n) => stack.push(*n),
 
                 Token::Op(op) => {
-                    let right_number = *stack.last().unwrap_or(&0);
-                    stack.pop();
+                    let right_number = stack.pop().unwrap();
 
-                    result = *stack.last().unwrap_or(&0);
-                    stack.pop();
+                    result = stack.pop().unwrap();
+                    
 
                     match op{
                         Operator::Add => result += right_number, 
@@ -90,42 +117,111 @@ impl Parser{
 
                     stack.push(result);
                 }
+
+                Token::Br(_) => {}
             }
         }
         result
     }
-    fn postfix(&mut self) -> Vec<Token>{
+    fn postfix(&mut self) -> Vec<&Token>{
 
+
+        let mut queue: Vec<&Token> = Vec::new();
+        let mut stack: Vec<&Token> = Vec::new();
+
+        for token in &self.tokens {
+            match token{
+                Token::Number(_) => queue.push(token), 
+                Token::Op(operator) => {
+                    if stack.is_empty(){
+                        stack.push(token);
+                    }
+                    else{
+                        let last_token_precedence = match stack.last().unwrap(){
+                            Token::Br(bracket) => bracket.operator_precedence(),
+                            Token::Op(operator) => operator.operator_precedence(),
+                            Token::Number(_) => 0, 
+                        };
+
+                        match operator.operator_precedence() {
+                            operator_precedence if operator_precedence > last_token_precedence => stack.push(token), 
+                            operator_precedence if operator_precedence <= last_token_precedence => {
+                                queue.push(stack.pop().unwrap());
+                                stack.push(token); 
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                Token::Br(bracket) => {
+                    match bracket{
+                        Bracket::OpeningParenthesis => stack.push(token), 
+                        Bracket::ClosingParenthesis => {
+                            while let Some(Token::Op(_operator)) = stack.last() {
+                                // Push any operator to the queue
+                                queue.push(stack.pop().unwrap());
+                            }
+                            // The while loop won't pop the opening parenthesis, so we do it manually
+                            stack.pop();
+                        }
+                    }
+                }
+            }
+
+        }
+        for token in stack.iter().rev() {
+            queue.push(*token);
+        }
+        println!("{:?}", queue); 
+        queue
+        /* 
         let mut queue: Vec<Token> = Vec::new();
-        let mut stack: Vec<Operator> = Vec::new();
+        let mut stack: Vec<Token> = Vec::new();
 
         for token in &self.tokens{
-            
             match token{
                 Token::Number(_) => queue.push(*token),
                 Token::Op(op) => {
                     if stack.is_empty(){
-                        stack.push(*op);
+                        stack.push(*token);
                     }
-                    else{
-                        let last_value = stack.last().unwrap_or(&Operator::Add);
-
-                        match op.operator_precedence(){
-                           n if n > last_value.operator_precedence() => stack.push(*op), 
-                           n if n <= last_value.operator_precedence() => {
-                                queue.push(Token::Op(*last_value));
-                                stack.pop();
-                                stack.push(*op);
-                           }
-                           _ => {}
+                    let last_stack_token = match stack.last().unwrap(){
+                        Token::Op(op) => op, 
+                        _ => &Operator::Add
+                    };
+                    match op.operator_precedence() {
+                        token_precedence if token_precedence > last_stack_token.operator_precedence() => stack.push(Token::Op(*op)), 
+                        token_precedence if token_precedence <= last_stack_token.operator_precedence() => {
+                            let last_value = stack.pop().unwrap();
+                            queue.push(last_value);
+                            stack.push(Token::Op(*op));
+                        }
+                        _ => {}
+                    }
+                }
+                Token::Br(br) => {
+                    match br{
+                        Bracket::OpeningParenthesis => stack.push(Token::Br(*br)), 
+                        Bracket::ClosingParenthesis => {
+                            while let Some(&Token::Br(bracket)) = stack.last() {
+                                println!("{:?}", stack.last());
+                                if bracket == Bracket::OpeningParenthesis{
+                                    stack.pop();
+                                    break; 
+                                }
+                                queue.push(stack.pop().unwrap());                                
+                                
+                            }
                         }
                     }
                 }
             }
         }
-        for op in stack.iter().rev() {
-            queue.push(Token::Op(*op));
+        for token in stack.iter().rev() {
+            queue.push(*token);
         }
+        println!("{:?}", queue);
         queue
+        */
     }
 }
