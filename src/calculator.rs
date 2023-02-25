@@ -78,26 +78,35 @@ impl Parser{
                         tokens.push(Token::Number(parse_number_with_sign(current_number, sign_carry)));
                         current_number = String::new();
                     }
+            
                     match c{ 
                         '*' => tokens.push(Token::Op(Operator::Multiply)), 
                         '/' => tokens.push(Token::Op(Operator::Divide)),
                         _ => {}
                     }
                 }
-                
-                '(' | ')' => {
+                '(' =>{
+                    if !current_number.is_empty(){
+                        tokens.push(Token::Number(parse_number_with_sign(current_number, sign_carry)));
+                        current_number = String::new();
+                        tokens.push(Token::Op(Operator::Multiply));
+                    }
+                    if tokens.len() > 0{
+                        match tokens.last().unwrap() {
+                            Token::Br(_) => tokens.push(Token::Op(Operator::Multiply)), 
+                            _ => {}
+                        }
+                    }
+                    
+                    tokens.push(Token::Br(Bracket::OpeningParenthesis));
+                }
+                ')' => {
                     if !current_number.is_empty(){
                         tokens.push(Token::Number(parse_number_with_sign(current_number, sign_carry)));
                         current_number = String::new();
                     }
-
-                    match c {
-                        '(' =>  tokens.push(Token::Br(Bracket::OpeningParenthesis)), 
-                        ')' => tokens.push(Token::Br(Bracket::ClosingParenthesis)),
-
-                        _ => {}
-
-                    }
+                    tokens.push(Token::Br(Bracket::ClosingParenthesis));
+                    // If the number is empty, it means a number was parsed by an operator and the operator 
                 }
             
                 '0'..='9' => current_number.push(c), 
