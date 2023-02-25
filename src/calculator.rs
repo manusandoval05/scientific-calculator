@@ -58,9 +58,11 @@ impl Parser{
                 '-' | '+' => {
                     if current_number.is_empty(){
                         sign_carry = compare_signs(sign_carry, c);
+                        println!("Sign carry is: {}", sign_carry);
                     }
                     else{
                         tokens.push(Token::Number(parse_number_with_sign(current_number, sign_carry)));
+                        sign_carry = '+';
                         current_number = String::new();
                         
                         match c{
@@ -110,7 +112,7 @@ impl Parser{
             }
         }
         if !current_number.is_empty(){
-            tokens.push(Token::Number(current_number.parse().unwrap()));
+            tokens.push(Token::Number(parse_number_with_sign(current_number, sign_carry)));
         }
         println!("{:?}", tokens);
         Parser { 
