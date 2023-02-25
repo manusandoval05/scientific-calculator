@@ -84,13 +84,7 @@ impl Parser{
                         _ => {}
                     }
                 }
-                ' ' => {
-                    if !current_number.is_empty(){
-                        tokens.push(Token::Number(parse_number_with_sign(current_number, sign_carry)));
-                        current_number = String::new();
-                    }
-                }
-
+                
                 '(' | ')' => {
                     if !current_number.is_empty(){
                         tokens.push(Token::Number(parse_number_with_sign(current_number, sign_carry)));
